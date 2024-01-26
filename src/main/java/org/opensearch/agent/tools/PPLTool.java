@@ -136,8 +136,20 @@ public class PPLTool implements Tool {
 
     @Override
     public <T> void run(Map<String, String> parameters, ActionListener<T> listener) {
+        log.info("for ppl input parameter");
+        log.info(parameters);
         parameters = extractFromChatParameters(parameters);
-        String indexName = parameters.get("index");
+        String indexName;
+        if (parameters.containsKey("MLModelTool.output")){
+            indexName = parameters.get("MLModelTool.output");
+        }
+        else{indexName = parameters.get("index");}
+        log.info(indexName);
+        if (StringUtils.isBlank(indexName))
+        {
+            listener.onFailure(new IllegalArgumentException("We cannot find the index name based on your question, please let customer to provide index name."));
+            return ;
+        }
         String question = parameters.get("question");
         if (StringUtils.isBlank(indexName) || StringUtils.isBlank(question)) {
             throw new IllegalArgumentException("Parameter index and question can not be null or empty.");
@@ -212,7 +224,8 @@ public class PPLTool implements Tool {
             ));
         }, e -> {
             log.info("fail to get mapping: " + e);
-            listener.onFailure(e);
+            listener.onFailure(new IllegalArgumentException("We cannot find the index name based on your question, please let customer to provide index name."));
+            //listener.onFailure(e);
         }));
     }
 
