@@ -140,14 +140,15 @@ public class PPLTool implements Tool {
         log.info(parameters);
         parameters = extractFromChatParameters(parameters);
         String indexName;
-        if (parameters.containsKey("MLModelTool.output")){
-            indexName = parameters.get("MLModelTool.output");
+        indexName = parameters.getOrDefault("MLModelTool.output", "");
+        if (StringUtils.isBlank(indexName))
+        {
+            indexName = parameters.getOrDefault("index", "");
         }
-        else{indexName = parameters.get("index");}
         log.info(indexName);
         if (StringUtils.isBlank(indexName))
         {
-            listener.onFailure(new IllegalArgumentException("We cannot find the index name based on your question, please let customer to provide index name."));
+            listener.onFailure(new IllegalArgumentException("We cannot find the index name based on your question, please let human provide index name."));
             return ;
         }
         String question = parameters.get("question");
@@ -160,17 +161,19 @@ public class PPLTool implements Tool {
                     + indexName
             );
         }
+        indexName = indexName.strip();
         SearchRequest searchRequest = buildSearchRequest(indexName);
         GetMappingsRequest getMappingsRequest = buildGetMappingRequest(indexName);
+        String finalIndexName = indexName;
         client.admin().indices().getMappings(getMappingsRequest, ActionListener.<GetMappingsResponse>wrap(getMappingsResponse -> {
             Map<String, MappingMetadata> mappings = getMappingsResponse.getMappings();
             if (mappings.size() == 0) {
-                throw new IllegalArgumentException("No matching mapping with index name: " + indexName);
+                throw new IllegalArgumentException("No matching mapping with index name: " + finalIndexName);
             }
             client.search(searchRequest, ActionListener.<SearchResponse>wrap(searchResponse -> {
                 SearchHit[] searchHits = searchResponse.getHits().getHits();
                 String tableInfo = constructTableInfo(searchHits, mappings);
-                String prompt = constructPrompt(tableInfo, question, indexName);
+                String prompt = constructPrompt(tableInfo, question, finalIndexName);
                 RemoteInferenceInputDataSet inputDataSet = RemoteInferenceInputDataSet
                     .builder()
                     .parameters(Collections.singletonMap("prompt", prompt))
@@ -185,7 +188,7 @@ public class PPLTool implements Tool {
                     ModelTensors modelTensors = modelTensorOutput.getMlModelOutputs().get(0);
                     ModelTensor modelTensor = modelTensors.getMlModelTensors().get(0);
                     Map<String, String> dataAsMap = (Map<String, String>) modelTensor.getDataAsMap();
-                    String ppl = parseOutput(dataAsMap.get("response"), indexName);
+                    String ppl = parseOutput(dataAsMap.get("response"), finalIndexName);
                     if (!this.execute) {
                         listener.onResponse((T) ppl);
                         return;
@@ -200,6 +203,8 @@ public class PPLTool implements Tool {
                             getPPLTransportActionListener(ActionListener.<TransportPPLQueryResponse>wrap(transportPPLQueryResponse -> {
                                 String results = transportPPLQueryResponse.getResult();
                                 Map<String, String> returnResults = ImmutableMap.of("ppl", ppl, "executionResult", results);
+                                log.info("ppl return");
+                                log.info(returnResults);
                                 listener
                                     .onResponse(
                                         (T) AccessController
@@ -224,7 +229,7 @@ public class PPLTool implements Tool {
             ));
         }, e -> {
             log.info("fail to get mapping: " + e);
-            listener.onFailure(new IllegalArgumentException("We cannot find the index name based on your question, please let customer to provide index name."));
+            listener.onFailure(new IllegalArgumentException("We cannot find the index name based on your question, please let human provide index name."));
             //listener.onFailure(e);
         }));
     }
