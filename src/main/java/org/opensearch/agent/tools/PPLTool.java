@@ -140,10 +140,10 @@ public class PPLTool implements Tool {
         log.info(parameters);
         parameters = extractFromChatParameters(parameters);
         String indexName;
-        indexName = parameters.getOrDefault("MLModelTool.output", "");
+        indexName = parameters.getOrDefault("index", "");
         if (StringUtils.isBlank(indexName))
         {
-            indexName = parameters.getOrDefault("index", "");
+            indexName = parameters.getOrDefault("MLModelTool.output", "");
         }
         log.info(indexName);
         if (StringUtils.isBlank(indexName))
