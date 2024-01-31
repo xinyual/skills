@@ -91,6 +91,8 @@ public class PPLTool implements Tool {
 
     private PPLModelType pplModelType;
 
+    private String errorMessage;
+
     private static Gson gson = new Gson();
 
     private static Map<String, String> defaultPromptDict;
@@ -122,7 +124,7 @@ public class PPLTool implements Tool {
 
     }
 
-    public PPLTool(Client client, String modelId, String contextPrompt, String pplModelType, boolean execute) {
+    public PPLTool(Client client, String modelId, String contextPrompt, String pplModelType, boolean execute, String errorMessage) {
         this.client = client;
         this.modelId = modelId;
         this.pplModelType = PPLModelType.from(pplModelType);
@@ -132,6 +134,7 @@ public class PPLTool implements Tool {
             this.contextPrompt = contextPrompt;
         }
         this.execute = execute;
+        this.errorMessage = errorMessage;
     }
 
     @Override
@@ -168,7 +171,10 @@ public class PPLTool implements Tool {
         client.admin().indices().getMappings(getMappingsRequest, ActionListener.<GetMappingsResponse>wrap(getMappingsResponse -> {
             Map<String, MappingMetadata> mappings = getMappingsResponse.getMappings();
             if (mappings.size() == 0) {
-                throw new IllegalArgumentException("No matching mapping with index name: " + finalIndexName);
+                Map<String, String> tmpMap = ImmutableMap.of("indexName", finalIndexName);
+                StringSubstitutor substitutor = new StringSubstitutor(tmpMap, "${parameters.", "}");
+                String finalErrorMessage = substitutor.replace(errorMessage);
+                throw new IllegalArgumentException(finalErrorMessage);
             }
             client.search(searchRequest, ActionListener.<SearchResponse>wrap(searchResponse -> {
                 SearchHit[] searchHits = searchResponse.getHits().getHits();
@@ -229,6 +235,10 @@ public class PPLTool implements Tool {
             ));
         }, e -> {
             log.info("fail to get mapping: " + e);
+            Map<String, String> tmpMap = ImmutableMap.of("indexName", finalIndexName);
+            StringSubstitutor substitutor = new StringSubstitutor(tmpMap, "${parameters.", "}");
+            String finalErrorMessage = substitutor.replace(errorMessage);
+            throw new IllegalArgumentException(finalErrorMessage);
             listener.onFailure(new IllegalArgumentException("We cannot find the index name based on your question, please let human provide index name."));
             //listener.onFailure(e);
         }));
@@ -281,7 +291,8 @@ public class PPLTool implements Tool {
                 (String) map.get("model_id"),
                 (String) map.getOrDefault("prompt", ""),
                 (String) map.getOrDefault("model_type", ""),
-                Boolean.valueOf((String) map.getOrDefault("execute", "true"))
+                Boolean.valueOf((String) map.getOrDefault("execute", "true")),
+                    (String) map.get("error_message")
             );
         }
 
