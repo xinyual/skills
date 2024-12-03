@@ -14,6 +14,7 @@ import org.opensearch.agent.tools.CreateAnomalyDetectorTool;
 import org.opensearch.agent.tools.LogPatternTool;
 import org.opensearch.agent.tools.NeuralSparseSearchTool;
 import org.opensearch.agent.tools.PPLTool;
+import org.opensearch.agent.tools.VizTool;
 import org.opensearch.agent.tools.RAGTool;
 import org.opensearch.agent.tools.SearchAlertsTool;
 import org.opensearch.agent.tools.SearchAnomalyDetectorsTool;
@@ -62,6 +63,7 @@ public class ToolPlugin extends Plugin implements MLCommonsExtension {
         this.clusterService = clusterService;
         this.xContentRegistry = xContentRegistry;
         PPLTool.Factory.getInstance().init(client);
+        VizTool.Factory.getInstance().init(client);
         NeuralSparseSearchTool.Factory.getInstance().init(client, xContentRegistry);
         VectorDBTool.Factory.getInstance().init(client, xContentRegistry);
         RAGTool.Factory.getInstance().init(client, xContentRegistry);
@@ -79,6 +81,7 @@ public class ToolPlugin extends Plugin implements MLCommonsExtension {
         return List
             .of(
                 PPLTool.Factory.getInstance(),
+                VizTool.Factory.getInstance(),
                 NeuralSparseSearchTool.Factory.getInstance(),
                 VectorDBTool.Factory.getInstance(),
                 RAGTool.Factory.getInstance(),
