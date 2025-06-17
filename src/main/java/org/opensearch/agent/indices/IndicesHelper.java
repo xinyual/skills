@@ -11,26 +11,21 @@ import static org.opensearch.ml.common.CommonValue.SCHEMA_VERSION_FIELD;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.commons.text.StringSubstitutor;
 import org.opensearch.action.admin.indices.create.CreateIndexRequest;
 import org.opensearch.action.admin.indices.create.CreateIndexResponse;
 import org.opensearch.action.admin.indices.mapping.put.PutMappingRequest;
-import org.opensearch.transport.client.Client;
 import org.opensearch.cluster.metadata.IndexMetadata;
 import org.opensearch.cluster.service.ClusterService;
 import org.opensearch.common.util.concurrent.ThreadContext;
-import org.opensearch.common.xcontent.XContentType;
 import org.opensearch.core.action.ActionListener;
 import org.opensearch.core.xcontent.MediaTypeRegistry;
 import org.opensearch.ml.common.CommonValue;
 import org.opensearch.ml.common.exception.MLException;
-import org.opensearch.ml.common.output.model.ModelTensorOutput;
+import org.opensearch.transport.client.Client;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -52,12 +47,11 @@ public class IndicesHelper {
         }
     }
 
-
     public void initIndexIfAbsent(SkillsIndexEnum skillsIndexEnum, ActionListener<Boolean> listener) {
         try (
-                ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext();
-                InputStream settingIns = this.getClass().getResourceAsStream(skillsIndexEnum.getSetting());
-                InputStream mappingIns = this.getClass().getResourceAsStream(skillsIndexEnum.getMapping())
+            ThreadContext.StoredContext threadContext = client.threadPool().getThreadContext().stashContext();
+            InputStream settingIns = this.getClass().getResourceAsStream(skillsIndexEnum.getSetting());
+            InputStream mappingIns = this.getClass().getResourceAsStream(skillsIndexEnum.getMapping())
         ) {
             String setting = new String(Objects.requireNonNull(settingIns).readAllBytes(), StandardCharsets.UTF_8);
             String mapping = new String(Objects.requireNonNull(mappingIns).readAllBytes(), StandardCharsets.UTF_8);
@@ -77,33 +71,33 @@ public class IndicesHelper {
                 });
 
                 CreateIndexRequest request = new CreateIndexRequest(skillsIndexEnum.getIndexName())
-                        .mapping(mapping)
-                        .settings(setting, MediaTypeRegistry.JSON);
+                    .mapping(mapping)
+                    .settings(setting, MediaTypeRegistry.JSON);
                 client.admin().indices().create(request, actionListener);
             } else {
                 log.debug("index:{} is already created", skillsIndexEnum.getIndexName());
                 if (indexMappingUpdated.containsKey(skillsIndexEnum.getIndexName())
-                        && !indexMappingUpdated.get(skillsIndexEnum.getIndexName()).get()) {
+                    && !indexMappingUpdated.get(skillsIndexEnum.getIndexName()).get()) {
                     shouldUpdateIndex(skillsIndexEnum.getIndexName(), skillsIndexEnum.getVersion(), ActionListener.wrap(r -> {
                         if (r) {
                             // return true if should update skillsIndexEnum
                             client
-                                    .admin()
-                                    .indices()
-                                    .putMapping(
-                                            new PutMappingRequest().indices(skillsIndexEnum.getIndexName()).source(mapping, MediaTypeRegistry.JSON),
-                                            ActionListener.wrap(response -> {
-                                                if (response.isAcknowledged()) {
-                                                    internalListener.onResponse(true);
-                                                } else {
-                                                    internalListener
-                                                            .onFailure(new MLException("Failed to update skillsIndexEnum: " + skillsIndexEnum));
-                                                }
-                                            }, exception -> {
-                                                log.error("Failed to update skillsIndexEnum " + skillsIndexEnum, exception);
-                                                internalListener.onFailure(exception);
-                                            })
-                                    );
+                                .admin()
+                                .indices()
+                                .putMapping(
+                                    new PutMappingRequest().indices(skillsIndexEnum.getIndexName()).source(mapping, MediaTypeRegistry.JSON),
+                                    ActionListener.wrap(response -> {
+                                        if (response.isAcknowledged()) {
+                                            internalListener.onResponse(true);
+                                        } else {
+                                            internalListener
+                                                .onFailure(new MLException("Failed to update skillsIndexEnum: " + skillsIndexEnum));
+                                        }
+                                    }, exception -> {
+                                        log.error("Failed to update skillsIndexEnum " + skillsIndexEnum, exception);
+                                        internalListener.onFailure(exception);
+                                    })
+                                );
                         } else {
                             // no need to update skillsIndexEnum if it does not exist or the version is already up-to-date.
                             indexMappingUpdated.get(skillsIndexEnum.getIndexName()).set(true);
@@ -149,6 +143,5 @@ public class IndicesHelper {
         }
         listener.onResponse(newVersion > oldVersion);
     }
-
 
 }

@@ -1,4 +1,3 @@
-
 /*
  * Copyright OpenSearch Contributors
  * SPDX-License-Identifier: Apache-2.0
@@ -17,10 +16,10 @@ import lombok.experimental.FieldDefaults;
 public enum SkillsIndexEnum {
 
     SKILLS_INDEX_SUMMARY(
-            ".plugins-skills-index-summary",
-            "/.plugins-skills-index-summary-setting.json",
-            "/.plugins-skills-index-summary-mapping.json",
-            0
+        ".plugins-skills-index-summary",
+        "/.plugins-skills-index-summary-setting.json",
+        "/.plugins-skills-index-summary-mapping.json",
+        0
     );
 
     private String indexName;
